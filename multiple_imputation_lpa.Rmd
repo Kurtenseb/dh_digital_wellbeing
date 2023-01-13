@@ -1,0 +1,63 @@
+---
+title: "1b_multiple_imputation"
+author: "Sebastian Kurten"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(mice)
+
+#if fit_models == 1 models get estimated. Otherwise, they are read from the hard drive
+fit_models = 0
+
+```
+
+Load the data for the Latent Profile Analysis.
+
+```{r}
+data_wide_lpa <- read.csv("../../data/a_us/cleaned/us_cleaned.csv")  %>% 
+  dplyr::select(starts_with("employment_quality")|starts_with("mental_health")|starts_with("physical_health")|starts_with("qualification")|starts_with("socialkid")|starts_with("sib_number")|starts_with("inc")|          starts_with("imd"))
+```
+
+Check the proportion of missings per variable.
+
+```{r}
+#function to calculate proportion of missings in a vector
+prop_missings_vector <- function(x) {
+  sum(is.na(x))/length(x)
+}
+
+#function to calculate missings for a whole dataframe and sort it
+missings_df <- function(dataset) {
+  dataset %>%
+    apply(2, prop_missings_vector) %>%
+    sort(decreasing = T)
+}
+
+missings_df (data_wide_lpa)
+```
+Impute the missing data.
+
+```{r, message=FALSE}
+if(fit_models == 1){
+input_data_lpa_mi <- mice (data_wide_lpa, m=5, maxit=10, meth="pmm", seed = 6102022, pred = quickpred(data_wide_lpa))
+saveRDS(input_data_lpa_mi,file  ="../data/objects/input_data_lpa_mi.rds") 
+} else {
+  input_data_lpa_mi  <- readRDS(file  ="../data/objects/input_data_lpa_mi.rds")
+}
+densityplot(input_data_lpa_mi)
+
+```
+
+The plots show that the distribution of the observed and computed data matches. Therefore, we will proceed with a complete dataset.
+
+```{r}
+
+data_wide_lpa_mi <- complete(input_data_lpa_mi)
+saveRDS(data_wide_lpa_mi,file  ="../data/objects/data_wide_lpa_mi.rds")
+
+```
